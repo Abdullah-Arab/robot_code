@@ -5,9 +5,9 @@ import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
 import edu.wpi.first.wpilibj.AnalogInput;
+import edu.wpi.first.wpilibj.DigitalInput;
 
 import com.revrobotics.CANSparkMax;
-import com.revrobotics.CANSparkBase.IdleMode;
 import com.revrobotics.CANSparkLowLevel.MotorType;
 
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
@@ -21,8 +21,18 @@ public class Robot extends TimedRobot {
   private DifferentialDrive m_robotDrive = new DifferentialDrive(m_leftMotor, m_rightMotor);
   XboxController m_controller = new XboxController(0);
 
+  // encoder
+     private DigitalInput irSensor; // The IR sensor connected to a digital input
+    private int holeCount = 0; // Counts detected holes
+    private int cycles = 0; // Counts complete cycles
+    private boolean lastSensorState = false; // Tracks previous sensor state
+ // Configuration
+ private static final double DISC_DIAMETER_CM = 15.0; // Diameter of the disc in cm
+ private static final int HOLES_PER_CYCLE = 6; // Holes per one cycle
 
-  // Lifter
+
+
+
   private CANSparkMax joint_arm = new CANSparkMax(6, MotorType.kBrushed);
   private CANSparkMax slider = new CANSparkMax(5, MotorType.kBrushed);
 
@@ -32,6 +42,8 @@ public class Robot extends TimedRobot {
   public void robotInit() {
     SendableRegistry.addChild(m_robotDrive, m_leftMotor);
     SendableRegistry.addChild(m_robotDrive, m_rightMotor);
+
+    irSensor = new DigitalInput(0); // Initialize IR sensor on digital port 0
 
     m_rightMotor.setInverted(false);
     m_leftMotor.setInverted(true);
@@ -78,9 +90,29 @@ public class Robot extends TimedRobot {
       joint_arm.set(0);
     }
 
+
+    boolean currentSensorState = irSensor.get(); // Get the current state of the IR sensor
+
+    // Check for rising edge (hole detection)
+    if (currentSensorState && !lastSensorState) {
+        holeCount++;
+        if (holeCount >= HOLES_PER_CYCLE) {
+            cycles++;
+            holeCount = 0; // Reset hole count after a full cycle
+        }
+    }
+
+    // Update the last sensor state for edge detection
+    lastSensorState = currentSensorState;
+
+    // Calculate distance traveled
+    double distanceTraveled = calculateDistanceTraveled(cycles);
+    System.out.println("Distance Traveled: " + distanceTraveled + " cm");
+
     
     
     // Dashboard
+    SmartDashboard.putNumber("Distance Traveld", distanceTraveled);
     SmartDashboard.putNumber("input 0", m_analogInput.getValue());
     SmartDashboard.putNumber("Joystick Y", m_controller.getLeftY());
     SmartDashboard.putNumber("Joystick X", m_controller.getRightX());
@@ -89,6 +121,12 @@ public class Robot extends TimedRobot {
     // SmartDashboard.putNumber("Center X", centerX);  // Display the X position of the blue object
     SmartDashboard.putData("Robot Drive", m_robotDrive);
   }
+
+
+  private double calculateDistanceTraveled(int cycles) {
+    double discCircumference = Math.PI * DISC_DIAMETER_CM;
+    return cycles * discCircumference; // Distance is cycles * circumference
+}
 
   @Override
   public void autonomousInit() {
