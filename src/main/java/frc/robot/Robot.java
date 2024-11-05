@@ -90,6 +90,13 @@ public class Robot extends TimedRobot {
       joint_arm.set(0);
     }
 
+    if(m_controller.getAButton()){
+      // driveToDistance(100.0, 60);
+      followPath( );
+      // turnInPlace(180.0, 0.75, 10.0);  // Turn 180 degrees, 50% speed, for 10 seconds
+
+    }
+
 
     boolean currentSensorState = irSensor.get(); // Get the current state of the IR sensor
 
@@ -152,4 +159,70 @@ public class Robot extends TimedRobot {
     // SmartDashboard.putNumber("Center X", centerX);  // Display the X position of the blue object
     SmartDashboard.putData("Robot Drive", m_robotDrive);
   }
+
+  public void followPath() {
+    // Step 1: Drive forward 200 cm
+    driveToDistance(200.0, 0.0);  // Drive forward 200 cm, with 0-degree turn (go straight)
+
+    // Step 2: Turn 180 degrees to face the opposite direction
+    turnInPlace(180.0, 0.75, 1.5);  // Turn 180 degrees, 50% speed, for 10 seconds
+
+    // Step 3: Drive back 200 cm to the starting point
+    driveToDistance(200.0, 0.0);  // Drive forward 200 cm again (after the turn, this moves back)
+}
+
+
+
+public void turnInPlace(double directionDegrees, double turnSpeed, double timeSeconds) {
+  double turnAdjustment = (directionDegrees / Math.abs(directionDegrees)) * turnSpeed;  // Set turning direction and speed
+
+  // Turn the robot for the specified time
+  long startTime = System.currentTimeMillis();  // Get the current time
+  long duration = (long) (timeSeconds * 1000);  // Convert time to milliseconds
+
+  while (System.currentTimeMillis() - startTime < duration) {
+      m_robotDrive.arcadeDrive(0.0, turnAdjustment);  // No forward movement, only turning
+  }
+
+  // Stop the robot after the time has elapsed
+  m_robotDrive.arcadeDrive(0.0, 0.0);
+}
+
+
+
+
+  public void driveToDistance(double targetDistanceCm, double directionDegrees) {
+    // Reset cycle and hole counts at the start
+    holeCount = 0;
+    cycles = 0;
+
+    // Calculate turn adjustment for direction
+    double turnAdjustment = directionDegrees / 180.0; // Scale the turn value (-1 to 1 based on degrees)
+
+    // Keep driving until the target distance is reached
+    while (calculateDistanceTraveled(cycles) < targetDistanceCm) {
+        // Drive the robot with the given direction (speed = 0.5, turn based on directionDegrees)
+        m_robotDrive.arcadeDrive(0.65, turnAdjustment); // Move forward with a constant speed (0.5) and direction
+        
+        // Update sensor data and calculate distance traveled
+        boolean currentSensorState = irSensor.get(); // Get current state of the IR sensor
+        
+        // Check for rising edge (hole detection)
+        if (currentSensorState && !lastSensorState) {
+            holeCount++;
+            if (holeCount >= HOLES_PER_CYCLE) {
+                cycles++;
+                holeCount = 0; // Reset hole count after a full cycle
+            }
+        }
+
+        // Update the last sensor state for edge detection
+        lastSensorState = currentSensorState;
+    }
+
+    // Stop the robot after reaching the target distance
+    m_robotDrive.arcadeDrive(0.0, 0.0);
+}
+
+
 }
