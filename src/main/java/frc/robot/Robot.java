@@ -11,7 +11,8 @@ import com.revrobotics.CANSparkMax;
 import com.revrobotics.CANSparkLowLevel.MotorType;
 
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
-
+import edu.wpi.first.wpilibj.I2C;
+import edu.wpi.first.wpilibj.I2C.Port;
 
 public class Robot extends TimedRobot {
   Thread m_visionThread;
@@ -38,6 +39,11 @@ public class Robot extends TimedRobot {
 
   private AnalogInput m_analogInput = new AnalogInput(0); // Create AnalogInput for pin 0
 
+
+   // I2C configuration
+   private static final int DEVICE_ADDRESS = 1101000; // Replace with your sensor's address
+   private I2C i2c;
+
   @Override
   public void robotInit() {
     SendableRegistry.addChild(m_robotDrive, m_leftMotor);
@@ -49,6 +55,9 @@ public class Robot extends TimedRobot {
     m_leftMotor.setInverted(true);
     // slider.setIdleMode(IdleMode.kBrake);
 
+
+    i2c = new I2C(I2C.Port.kOnboard, DEVICE_ADDRESS); // Initialize I2C with the device address
+  
 
   
   }
@@ -116,6 +125,12 @@ public class Robot extends TimedRobot {
     double distanceTraveled = calculateDistanceTraveled(cycles);
     System.out.println("Distance Traveled: " + distanceTraveled + " cm");
 
+
+    
+ // Read sensor data
+ int sensorData = readSensorData(1101000); // Replace with your register address
+ System.out.println("I2C: " + sensorData );
+ SmartDashboard.putNumber("I2C Sensor Data", sensorData);
     
     
     // Dashboard
@@ -128,6 +143,13 @@ public class Robot extends TimedRobot {
     // SmartDashboard.putNumber("Center X", centerX);  // Display the X position of the blue object
     SmartDashboard.putData("Robot Drive", m_robotDrive);
   }
+
+    // Method to read data from the I2C device
+    private int readSensorData(int registerAddress) {
+      byte[] buffer = new byte[2];
+      i2c.read(registerAddress, 2, buffer);
+      return (buffer[0] << 8) | (buffer[1] & 0xFF); // Combine bytes into an integer
+    }
 
 
   private double calculateDistanceTraveled(int cycles) {
