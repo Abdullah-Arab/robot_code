@@ -6,19 +6,24 @@ import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
 import edu.wpi.first.wpilibj.AnalogInput;
 import edu.wpi.first.wpilibj.DigitalInput;
+import edu.wpi.first.wpilibj.DigitalOutput;
 
 import com.revrobotics.CANSparkMax;
 import com.revrobotics.CANSparkLowLevel.MotorType;
 
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
-import edu.wpi.first.wpilibj.I2C;
-import edu.wpi.first.wpilibj.I2C.Port;
+
 
 public class Robot extends TimedRobot {
   Thread m_visionThread;
 
   private CANSparkMax m_leftMotor = new CANSparkMax(1, MotorType.kBrushed);
   private CANSparkMax m_rightMotor = new CANSparkMax(3, MotorType.kBrushed);
+
+
+
+      private DigitalOutput gate_leftMotor ;
+        private DigitalOutput gate_rightMotor ;
   private DifferentialDrive m_robotDrive = new DifferentialDrive(m_leftMotor, m_rightMotor);
   XboxController m_controller = new XboxController(0);
 
@@ -42,12 +47,14 @@ public class Robot extends TimedRobot {
 
    // I2C configuration
    private static final int DEVICE_ADDRESS = 1101000; // Replace with your sensor's address
-   private I2C i2c;
+  //  private I2C i2c;
 
   @Override
   public void robotInit() {
     SendableRegistry.addChild(m_robotDrive, m_leftMotor);
     SendableRegistry.addChild(m_robotDrive, m_rightMotor);
+   gate_leftMotor = new DigitalOutput(8);
+    gate_rightMotor= new DigitalOutput(9);
 
     irSensor = new DigitalInput(0); // Initialize IR sensor on digital port 0
 
@@ -56,7 +63,7 @@ public class Robot extends TimedRobot {
     // slider.setIdleMode(IdleMode.kBrake);
 
 
-    i2c = new I2C(I2C.Port.kOnboard, DEVICE_ADDRESS); // Initialize I2C with the device address
+    // i2c = new I2C(I2C.Port.kOnboard, DEVICE_ADDRESS); // Initialize I2C with the device address
   
 
   
@@ -76,9 +83,9 @@ public class Robot extends TimedRobot {
 
 
     if (m_controller.getLeftBumper()) {
-      slider.set(-0.25);
+      slider.set(-0.35);
     } else if (m_controller.getRightBumper()) {
-      slider.set(0.25);
+      slider.set(0.35);
 
     } else {
       slider.set(0);
@@ -92,18 +99,30 @@ public class Robot extends TimedRobot {
     // slider.set(0.5);
 
     if (m_controller.getPOV() == 0) {
-      joint_arm.set(0.5);
+      joint_arm.set(0.75);
     } else if (m_controller.getPOV() == 180) {
-      joint_arm.set(-0.5);
+      joint_arm.set(-0.75);
     } else {
       joint_arm.set(0);
     }
 
     if(m_controller.getAButton()){
       // driveToDistance(100.0, 60);
-      followPath( );
+      // followPath( );
       // turnInPlace(180.0, 0.75, 10.0);  // Turn 180 degrees, 50% speed, for 10 seconds
 
+    }
+
+    // gate code
+    if (m_controller.getXButton()){
+      gate_leftMotor.set(true);
+      gate_rightMotor.set(false);
+    }else if (m_controller.getBButton()){
+      gate_rightMotor.set(true);
+      gate_leftMotor.set(false);
+    }else{
+      gate_leftMotor.set(false);
+      gate_rightMotor.set(false);
     }
 
 
@@ -125,12 +144,14 @@ public class Robot extends TimedRobot {
     double distanceTraveled = calculateDistanceTraveled(cycles);
     System.out.println("Distance Traveled: " + distanceTraveled + " cm");
 
+    
+
 
     
  // Read sensor data
- int sensorData = readSensorData(1101000); // Replace with your register address
- System.out.println("I2C: " + sensorData );
- SmartDashboard.putNumber("I2C Sensor Data", sensorData);
+//  int sensorData = readSensorData(1101000); // Replace with your register address
+//  System.out.println("I2C: " + sensorData );
+//  SmartDashboard.putNumber("I2C Sensor Data", sensorData);
     
     
     // Dashboard
@@ -145,11 +166,11 @@ public class Robot extends TimedRobot {
   }
 
     // Method to read data from the I2C device
-    private int readSensorData(int registerAddress) {
-      byte[] buffer = new byte[2];
-      i2c.read(registerAddress, 2, buffer);
-      return (buffer[0] << 8) | (buffer[1] & 0xFF); // Combine bytes into an integer
-    }
+    // private int readSensorData(int registerAddress) {
+    //   byte[] buffer = new byte[2];
+    //   // i2c.read(registerAddress, 2, buffer);
+    //   return (buffer[0] << 8) | (buffer[1] & 0xFF); // Combine bytes into an integer
+    // }
 
 
   private double calculateDistanceTraveled(int cycles) {
